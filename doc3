@@ -1,0 +1,10 @@
+import random 
+x = int(input("digite um valor "))
+y = int(input("digite outro valor "))
+n = random.randint(1, 50)
+if n == x:
+    print("voce acertou ")
+elif n != y or n != x:
+    print("numeros incoretos tente novamente mais tarde ")
+
+
