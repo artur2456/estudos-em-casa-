@@ -1,0 +1,40 @@
+import pandas as pd   
+import matplotlib.pyplot  as plt    
+
+class carro:
+    def _init_(self, modelo,marca,ano,ano_fabricação ):
+        self.modelo = modelo 
+        self marca = marca
+        self ano = ano
+        self ano_fabricação = ano_fabricação
+    carros_vendidos = []
+    qtd = int(input("quantos carros  vendidos deseja registrar "))
+    for i in range(qtd):
+        print(f"\n cadastro de carro {i+1}")
+        modelo = input("digite o modelo  ")
+        marca = input("digita a marca ")
+        ano = int(input("digita o ano "))
+        ano_fabricação = int(input("digita o ano de fabricação do carro  "))
+        carro = carro(modelo, marca , ano , ano_fabricação )
+        carros_vendidos.append(carro)
+        
+
+        dados = {
+    "Modelo": [carro.modelo for carro in carros_vendidos],
+    "Marca": [carro.marca for carro in carros_vendidos],
+    "Ano": [carro.ano for carro in carros_vendidos],
+    "Ano de Fabricação": [carro.ano_fabricacao for carro in carros_vendidos]
+}
+        df = pd.dataframe(dados)
+        print("tabela de carros vendidos ")
+        print(df)
+
+        modelo_counts = df['modelo '].value_counts()
+        plt.figure(figsize=(10 , 6 , 9 ))
+        modelo_counts.plot(kind='bar', color='skyblue')
+plt.title('Modelos de Carros Mais Vendidos')
+plt.xlabel('Modelo')
+plt.ylabel('Quantidade Vendida')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
