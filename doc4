@@ -1,0 +1,22 @@
+import numpy as np 
+import pandas as pd
+from scipy import stats 
+
+idades = [24 , 45, 66 , 99 , 87, 4 , 1 ,90 ]
+
+df = pd.DataFrame({'Idade': idades})
+def calculo():
+media= np.mean(idades)
+moda  = np.median(idades)
+mediana  = stats.mode(idades , keepdims= True ).mode[0]
+desvio_padrao   = np.std(idades)
+resumo = pd.DataFrame ({'estatistica': ['media', 'moda ','mediana ' , 'desvio padrao '], 'valor ':  [media , moda , mediana , desvio_padrao]})
+
+print("tabela de dados ")
+print(df.to_string(index = False))
+print("resumo estatistico ")
+print(resumo.to_string(index = False))
+
+
+                        
+                        
