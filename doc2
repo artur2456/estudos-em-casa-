@@ -1,0 +1,33 @@
+import numpy as np 
+import pandas as pd
+from scipy import stats 
+import sqlite3 
+
+dados = [1, 2,5,7,9,8,6,4,3,2,8,9 ]
+
+def calcular_estatisticas():
+    media = np.mean(dados)
+    moda = np.median(dados)
+    moda = stats.mode(dados)[0][0]
+    desvio_padrao = np.std(dados)
+    return media, mediana, moda, desvio_padrao
+media, mediana, moda, desvio_padrao = calcular_estatisticas(dados)
+conn = sqlite3.connect('estatisticas.db')
+Cursor = conn.cursor
+
+Cursor.Execute('''criate table 
+               IF NOT exists 
+               estatisticas 
+               (id intenger primary KEY AUTOINCREMET , 
+               media REAL , 
+               mediana REAL , 
+               desvio padral , REAL )''')
+
+Cursor.Execute('''INSERRT INTO ESTATISTICAS(media , moda , mediana , desvio padrao )VALUES(???)''',(media,moda,mediana,desvio_padrao))
+conn.commit()
+
+print(f"media {media}")
+print(f"moda{moda}")
+print(f"mediana{mediana}")
+print(f"desvio padrao {desvio_padrao}")
+
