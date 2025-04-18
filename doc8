@@ -1,0 +1,171 @@
+import tkinter as tk
+from tkinter import messagebox
+import pandas as pd
+import matplotlib.pyplot as plt
+import socket
+import json
+import mysql.connector
+
+class Carro:
+    def __init__(self, modelo, marca, ano, ano_fabricacao):
+        self.modelo = modelo
+        self.marca = marca
+        self.ano = ano
+        self.ano_fabricacao = ano_fabricacao
+
+
+def conectar_mysql():
+    return mysql.connector.connect(
+        host="localhost",
+        port=3306,
+        user="root",
+        password="casa@123",
+        database="sistema_vendas"
+    )
+
+
+def enviar_servidor(dados):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.connect(("localhost", 9999))
+        s.send(json.dumps(dados).encode())
+        resposta = s.recv(4096)
+        return json.loads(resposta.decode())
+
+def registrar_venda_terminal():
+    carros_vendidos = []
+    qtd = int(input("Quantos carros vendidos deseja registrar? "))
+
+    for i in range(qtd):
+        print(f"\nCadastro do carro {i+1}")
+        modelo = input("Digite o modelo: ")
+        marca = input("Digite a marca: ")
+        ano = int(input("Digite o ano: "))
+        ano_fabricacao = int(input("Digite o ano de fabricação do carro: "))
+        carro = Carro(modelo, marca, ano, ano_fabricacao)
+        carros_vendidos.append(carro)
+
+        enviar_servidor({
+            "acao": "registro_venda",
+            "vendedor": "vendedor_teste",
+            "carro": modelo,
+            "preco": 0
+        })
+
+
+    dados = {
+        "Modelo": [carro.modelo for carro in carros_vendidos],
+        "Marca": [carro.marca for carro in carros_vendidos],
+        "Ano": [carro.ano for carro in carros_vendidos],
+        "Ano de Fabricação": [carro.ano_fabricacao for carro in carros_vendidos]
+    }
+
+    df = pd.DataFrame(dados)
+    print("\nTabela de carros vendidos:")
+    print(df)
+
+    modelo_counts = df['Modelo'].value_counts()
+    plt.figure(figsize=(10, 6))
+    modelo_counts.plot(kind='bar', color='skyblue')
+    plt.title('Modelos de Carros Mais Vendidos')
+    plt.xlabel('Modelo')
+    plt.ylabel('Quantidade Vendida')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+
+
+def tela_cadastro():
+    def cadastrar():
+        nome_valor = entry_nome.get()
+        email_valor = entry_email.get()
+        cpf_valor = entry_cpf.get()
+
+        if len(cpf_valor) != 11 or not cpf_valor.isdigit():
+            messagebox.showerror("Erro", "CPF inválido (deve ter 11 dígitos)")
+            return
+
+        resposta = enviar_servidor({
+            "acao": "cadastrar_vendedor",
+            "nome": nome_valor,
+            "email": email_valor,
+            "cpf": cpf_valor
+        })
+
+        if resposta["status"] == "ok":
+            messagebox.showinfo("Sucesso", resposta["mensagem"])
+        else:
+            messagebox.showerror("Erro", resposta["mensagem"])
+
+    root = tk.Tk()
+    root.title("Cadastro de Vendedor")
+
+    tk.Label(root, text="Nome completo").pack()
+    entry_nome = tk.Entry(root)
+    entry_nome.pack()
+
+    tk.Label(root, text="Email").pack()
+    entry_email = tk.Entry(root)
+    entry_email.pack()
+
+    tk.Label(root, text="CPF (11 dígitos)").pack()
+    entry_cpf = tk.Entry(root)
+    entry_cpf.pack()
+
+    tk.Button(root, text="Cadastrar", command=cadastrar).pack(pady=10)
+    root.mainloop()
+
+# Lógica do servidor: trata as requisições
+def tratar_requisicao(dados):
+    acao = dados.get("acao")
+
+    if acao == "cadastrar_vendedor":
+        try:
+            conn = conectar_mysql()
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO vendedores (nome, email, cpf) VALUES (%s, %s, %s)",
+                           (dados["nome"], dados["email"], dados["cpf"]))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return {"status": "ok", "mensagem": "Vendedor cadastrado com sucesso"}
+        except mysql.connector.IntegrityError:
+            return {"status": "erro", "mensagem": "CPF já cadastrado"}
+        except Exception as e:
+            return {"status": "erro", "mensagem": str(e)}
+
+    elif acao == "registro_venda":
+        try:
+            conn = conectar_mysql()
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO vendas (vendedor, carro, preco) VALUES (%s, %s, %s)",
+                           (dados["vendedor"], dados["carro"], dados["preco"]))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return {"status": "ok", "mensagem": "Venda registrada com sucesso"}
+        except Exception as e:
+            return {"status": "erro", "mensagem": str(e)}
+
+    return {"status": "erro", "mensagem": "Ação inválida ou não implementada"}
+
+# Servidor rodando localmente
+def iniciar_servidor():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("localhost", 9999))
+        s.listen()
+        print("Servidor ouvindo em localhost:9999...")
+        while True:
+            conn, addr = s.accept()
+            with conn:
+                dados = conn.recv(4096)
+                if not dados:
+                    continue
+                try:
+                    dados_json = json.loads(dados.decode())
+                    resposta = tratar_requisicao(dados_json)
+                except Exception as e:
+                    resposta = {"status": "erro", "mensagem": str(e)}
+                conn.send(json.dumps(resposta).encode())
+
+if __name__ == "__main__":
+    iniciar_servidor()
