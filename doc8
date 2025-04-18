@@ -1,0 +1,68 @@
+import sqlite3
+import pandas as pd
+import numpy as np
+import scipy.stats as stats
+import matplotlib.pyplot as plt
+
+# Conexão com o banco de dados SQLite
+conn = sqlite3.connect('vendas.db')
+
+# Criação da tabela de vendas
+conn.execute('''
+CREATE TABLE IF NOT EXISTS vendas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vendedor TEXT,
+    carro TEXT,
+    preco REAL
+)
+''')
+
+def registrar_venda(vendedor, carro, preco):
+    conn.execute('INSERT INTO vendas (vendedor, carro, preco) VALUES (?, ?, ?)', (vendedor, carro, preco))
+    conn.commit()
+    print("Venda registrada com sucesso.")
+
+def calcular_estatisticas_vendas():
+    # Lê os dados das vendas
+    df = pd.read_sql_query("SELECT preco FROM vendas", conn)
+
+    if df.empty:
+        print("Nenhuma venda registrada.")
+        return
+
+    # Calcula a média e o desvio padrão
+    media = df['preco'].mean()
+    desvio_padrao = df['preco'].std()
+
+    # Calcula o intervalo de confiança de 95%
+    n = len(df['preco'])
+    if n > 1:
+        erro_padrao = desvio_padrao / np.sqrt(n)
+        intervalo_confianca = stats.t.interval(0.95, n-1, loc=media, scale=erro_padrao)
+    else:
+        intervalo_confianca = (media, media)  # Se houver apenas um valor, o intervalo é o próprio valor
+
+    print(f"Média das vendas: R$ {media:.2f}")
+    print(f"Desvio padrão das vendas: R$ {desvio_padrao:.2f}")
+    print(f"Intervalo de confiança de 95%: {intervalo_confianca}")
+
+    # Cria um gráfico
+    plt.figure(figsize=(10, 6))
+    plt.bar(['Média', 'Desvio Padrão'], [media, desvio_padrao], color=['skyblue', 'salmon'])
+    plt.title('Média e Desvio Padrão das Vendas')
+    plt.ylabel('Valor (R$)')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+
+if __name__ == "__main__":
+    # Exemplo de registro de vendas
+    registrar_venda("vendedor_teste", "Carro A", 20000)
+    registrar_venda("vendedor_teste", "Carro B", 25000)
+    registrar_venda("vendedor_teste", "Carro C", 30000)
+
+    # Chama a função para calcular as estatísticas das vendas
+    calcular_estatisticas_vendas()
+
+# Fechar a conexão com o banco de dados
+conn.close()
